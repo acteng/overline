@@ -1,0 +1,32 @@
+---
+format: gfm
+---
+
+# overline
+
+Overline is a function that takes overlapping linestrings and converts them into a route network, as illustrated in a minimal example below.
+
+```{r, echo=FALSE, message=FALSE}
+library(sf)
+library(stplanr)
+sl = routes_fast_sf[2:3, 0]
+sl$n = 1:2
+plot(sl)
+rnet = overline(sl, attrib = "n")
+plot(rnet)
+sf::write_sf(sl, "minimal-example-input.geojson")
+sf::write_sf(rnet, "minimal-example-output.geojson")
+```
+
+
+The function has been implemented in the R package `stplanr` but is slow, buggy and not feature complete.
+This repo provides a place to discuss and develop example code to solve this problem.
+
+In Python, the input and outputs can be visualised as follows:
+
+```{python}
+import geopandas as gpd
+input = gpd.read_file("input.geojson")
+input.plot()
+```
+
