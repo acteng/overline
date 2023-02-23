@@ -14,8 +14,8 @@ sl$n = 1:2
 plot(sl)
 rnet = overline(sl, attrib = "n")
 plot(rnet)
-sf::write_sf(sl, "minimal-example-input.geojson")
-sf::write_sf(rnet, "minimal-example-output.geojson")
+sf::write_sf(sl, "minimal-example-input.geojson", delete_dsn = TRUE)
+sf::write_sf(rnet, "minimal-example-output.geojson", delete_dsn = TRUE)
 ```
 
 
