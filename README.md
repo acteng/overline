@@ -44,6 +44,13 @@ input.plot()
 
 ![](README_files/figure-commonmark/unnamed-chunk-2-1.png)
 
+``` python
+output = gpd.read_file("output.geojson")
+output.plot()
+```
+
+![](README_files/figure-commonmark/unnamed-chunk-3-3.png)
+
 # References
 
 <div id="refs" class="references csl-bib-body hanging-indent">

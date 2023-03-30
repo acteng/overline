@@ -29,4 +29,9 @@ input = gpd.read_file("input.geojson")
 input.plot()
 ```
 
+```{python}
+output = gpd.read_file("output.geojson")
+output.plot()
+```
+
 # References
