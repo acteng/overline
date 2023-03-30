@@ -4,7 +4,7 @@ use geo::GeodesicLength;
 use overline::{overline, Input};
 
 fn main() -> Result<()> {
-    let raw = std::fs::read_to_string("input.geojson")?;
+    let raw = std::fs::read_to_string("tests/atip_input.geojson")?;
     let input: Vec<Input> = geojson::de::deserialize_feature_collection_str_to_vec(&raw)?;
     let output = overline(&input);
     println!("Input:");
