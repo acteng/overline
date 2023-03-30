@@ -48,13 +48,14 @@ system("gh release upload v0 cycle_routes_london.zip")
 ```
 
 ```{r}
-#| eval: false
-cycle_routes_london = geojsonsf::geojson_sf("cycle_routes_london.geojson")
-names(cycle_routes_london)
+#| eval: true
 system.time({
+  cycle_routes_london = geojsonsf::geojson_sf("cycle_routes_london.geojson")
+  names(cycle_routes_london)
   rnet = overline(cycle_routes_london, attrib = "foot")
 })
-
+# sf::write_sf(rnet, "rnet_london.geojson")
+# system("gh release upload v0 rnet_london.geojson")
 ```
 
 # References

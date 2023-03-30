@@ -64,11 +64,29 @@ system("gh release upload v0 cycle_routes_london.zip")
 ```
 
 ``` r
-cycle_routes_london = geojsonsf::geojson_sf("cycle_routes_london.geojson")
-names(cycle_routes_london)
 system.time({
+  cycle_routes_london = geojsonsf::geojson_sf("cycle_routes_london.geojson")
+  names(cycle_routes_london)
   rnet = overline(cycle_routes_london, attrib = "foot")
 })
+```
+
+    2023-03-30 18:15:09 constructing segments
+
+    2023-03-30 18:16:12 building geometry
+
+    2023-03-30 18:16:15 simplifying geometry
+
+    2023-03-30 18:16:15 aggregating flows
+
+    2023-03-30 18:16:18 rejoining segments into linestrings
+
+       user  system elapsed 
+     96.299   4.503 100.751 
+
+``` r
+# sf::write_sf(rnet, "rnet_london.geojson")
+# system("gh release upload v0 rnet_london.geojson")
 ```
 
 # References
