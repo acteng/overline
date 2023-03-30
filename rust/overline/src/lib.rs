@@ -46,19 +46,12 @@ pub fn overline(input: &Vec<Input>) -> Vec<Output> {
         for line in input.geometry.lines() {
             // The segment is guaranteed to exist
             let indices = &line_segments[&HashedPoint::new_line(line)];
-            if pts_so_far.is_empty() {
-                pts_so_far.push(line.start);
-                pts_so_far.push(line.end);
-                indices_so_far = indices.clone();
-                // Say we're processing input 2, and we have a segment with indices [2, 5]. We want
-                // to add it to output. But later we'll work on input 5 and see the same segment
-                // with indices [2, 5]. We don't want to add it again, so we'll skip it using the
-                // logic below, since we process input in order.
-                keep_this_output = indices_so_far.iter().all(|i| *i >= idx);
-            } else if &indices_so_far == indices {
+
+            if &indices_so_far == indices {
                 assert_eq!(*pts_so_far.last().unwrap(), line.start);
                 pts_so_far.push(line.end);
-            } else {
+                continue;
+            } else if !pts_so_far.is_empty() {
                 // The overlap ends here
                 let add = Output {
                     geometry: std::mem::take(&mut pts_so_far).into(),
@@ -67,8 +60,18 @@ pub fn overline(input: &Vec<Input>) -> Vec<Output> {
                 if keep_this_output {
                     output.push(add);
                 }
-                keep_this_output = false;
+                // Reset below
             }
+
+            assert!(pts_so_far.is_empty());
+            pts_so_far.push(line.start);
+            pts_so_far.push(line.end);
+            indices_so_far = indices.clone();
+            // Say we're processing input 2, and we have a segment with indices [2, 5]. We want to
+            // add it to output. But later we'll work on input 5 and see the same segment with
+            // indices [2, 5]. We don't want to add it again, so we'll skip it using the logic
+            // below, since we process input in order.
+            keep_this_output = indices_so_far.iter().all(|i| *i >= idx);
         }
         // This input ended; add to output if needed
         if !pts_so_far.is_empty() && keep_this_output {
