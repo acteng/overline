@@ -14,7 +14,9 @@ pub struct Input {
     pub foot: usize,
 }
 
+#[derive(Debug, PartialEq, Deserialize)]
 pub struct Output {
+    #[serde(deserialize_with = "geojson::de::deserialize_geometry")]
     pub geometry: geo::LineString<f64>,
     // The indices of Input lines that matched to this segment
     pub indices: Vec<usize>,

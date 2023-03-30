@@ -331,6 +331,10 @@ dependencies = [
 [[package]]
 name = "tests"
 version = "0.1.0"
+dependencies = [
+ "geojson",
+ "overline",
+]
 
 [[package]]
 name = "thiserror"
