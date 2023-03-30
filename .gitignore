@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+rnet_london.geojson
+*.zip
+*cache*
+cycle_routes_london.geojson
