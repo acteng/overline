@@ -6,6 +6,7 @@ use serde::Deserialize;
 // TODO Never aggregate across OSM ID threshold. Plumb through an optional property to restrict
 // aggregation.
 
+// TODO Keep geojson out of this crate?
 #[derive(Deserialize)]
 pub struct Input {
     #[serde(deserialize_with = "geojson::de::deserialize_geometry")]
