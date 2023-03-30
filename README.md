@@ -51,6 +51,26 @@ output.plot()
 
 ![](README_files/figure-commonmark/unnamed-chunk-3-3.png)
 
+# Large example
+
+A large example plus benchmark is shown below:
+
+``` r
+# list.files()
+cycle_routes_london = pct::get_pct_routes_fast("london")
+sf::write_sf(cycle_routes_london, "cycle_routes_london.geojson")
+zip("cycle_routes_london.zip", "cycle_routes_london.geojson")
+system("gh release upload v0 cycle_routes_london.zip")
+```
+
+``` r
+cycle_routes_london = geojsonsf::geojson_sf("cycle_routes_london.geojson")
+names(cycle_routes_london)
+system.time({
+  rnet = overline(cycle_routes_london, attrib = "foot")
+})
+```
+
 # References
 
 <div id="refs" class="references csl-bib-body hanging-indent">
