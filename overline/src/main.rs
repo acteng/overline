@@ -1,9 +1,12 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use anyhow::Result;
 use geo::GeodesicLength;
 use ordered_float::NotNan;
 use serde::Deserialize;
+
+// TODO Never aggregate across OSM ID threshold. Plumb through an optional property to restrict
+// aggregation.
 
 #[derive(Deserialize)]
 struct Input {
@@ -15,7 +18,7 @@ struct Input {
 struct Output {
     geometry: geo::LineString<f64>,
     // The indices of Input lines that matched to this segment
-    inputs: HashSet<usize>,
+    indices: Vec<usize>,
 }
 
 fn main() -> Result<()> {
@@ -35,50 +38,65 @@ fn main() -> Result<()> {
         println!(
             "- length={}, indices {:?}",
             line.geometry.geodesic_length(),
-            line.inputs
+            line.indices
         );
     }
     Ok(())
 }
 
 fn overline(input: &Vec<Input>) -> Vec<Output> {
-    // Split lines by these
-    let mut vertices: HashSet<HashedPoint> = HashSet::new();
-
-    // Vertices come from endpoints, but also any intermediate points shared by two lines
-    // TODO Crossing lines?
-    let mut seen: HashSet<HashedPoint> = HashSet::new();
-
-    for line in input {
-        let mut iterator = line.geometry.points().map(HashedPoint::new).peekable();
-        let mut first = true;
-        while let Some(pt) = iterator.next() {
-            if first || iterator.peek().is_none() || seen.contains(&pt) {
-                vertices.insert(pt);
-            } else {
-                seen.insert(pt);
-            }
-            first = false;
+    // For every individual (directed) line segment, record the index of inputs matching there
+    let mut line_segments: HashMap<(HashedPoint, HashedPoint), Vec<usize>> = HashMap::new();
+    for (idx, input) in input.iter().enumerate() {
+        for line in input.geometry.lines().map(HashedPoint::new_line) {
+            line_segments.entry(line).or_insert_with(Vec::new).push(idx);
         }
     }
+    // TODO We also need to split some line segments if they're not matching up at existing points.
 
+    // Then look at each input, accumulating points as long all the indices match
     let mut output = Vec::new();
-    for (idx, line) in input.iter().enumerate() {
-        let mut pts = Vec::new();
-        for pt in line.geometry.points() {
-            pts.push(pt);
-            if vertices.contains(&HashedPoint::new(pt)) && pts.len() > 1 {
-                output.push(Output {
-                    geometry: std::mem::take(&mut pts).into(),
-                    inputs: HashSet::from([idx]),
-                });
+    for (idx, input) in input.iter().enumerate() {
+        // This state is reset as we look through this input's points
+        let mut pts_so_far = Vec::new();
+        let mut indices_so_far = Vec::new();
+        let mut keep_this_output = false;
+
+        for line in input.geometry.lines() {
+            // The segment is guaranteed to exist
+            let indices = &line_segments[&HashedPoint::new_line(line)];
+            if pts_so_far.is_empty() {
+                pts_so_far.push(line.start);
+                pts_so_far.push(line.end);
+                indices_so_far = indices.clone();
+                // Say we're processing input 2, and we have a segment with indices [2, 5]. We want
+                // to add it to output. But later we'll work on input 5 and see the same segment
+                // with indices [2, 5]. We don't want to add it again, so we'll skip it using the
+                // logic below, since we process input in order.
+                keep_this_output = indices_so_far.iter().all(|i| *i >= idx);
+            } else if &indices_so_far == indices {
+                assert_eq!(*pts_so_far.last().unwrap(), line.start);
+                pts_so_far.push(line.end);
+            } else {
+                // The overlap ends here
+                let add = Output {
+                    geometry: std::mem::take(&mut pts_so_far).into(),
+                    indices: std::mem::take(&mut indices_so_far),
+                };
+                if keep_this_output {
+                    output.push(add);
+                }
+                keep_this_output = false;
             }
         }
+        // This input ended; add to output if needed
+        if !pts_so_far.is_empty() && keep_this_output {
+            output.push(Output {
+                geometry: pts_so_far.into(),
+                indices: indices_so_far,
+            });
+        }
     }
-    // TODO Be careful, if we index lines by (start, end), because there could be multiple lines
-    // between the same pair
-
-    // Merge identical outputs
 
     output
 }
@@ -90,11 +108,15 @@ struct HashedPoint {
     y: NotNan<f64>,
 }
 impl HashedPoint {
-    fn new(pt: geo::Point<f64>) -> Self {
+    fn new(coord: geo::Coord<f64>) -> Self {
         Self {
-            x: NotNan::new(pt.x()).unwrap(),
-            y: NotNan::new(pt.y()).unwrap(),
+            x: NotNan::new(coord.x).unwrap(),
+            y: NotNan::new(coord.y).unwrap(),
         }
+    }
+
+    fn new_line(line: geo::Line<f64>) -> (Self, Self) {
+        (Self::new(line.start), Self::new(line.end))
     }
 }
 
@@ -103,4 +125,6 @@ impl HashedPoint {
  * same line, reversed
  * cross at a single point
  * slightly offset coordinates
+ *
+ * TODO Include a little Leaflet viewer that can load an input/output file pair and display it
  */
