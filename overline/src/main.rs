@@ -35,10 +35,12 @@ fn main() -> Result<()> {
     }
     println!("Output:");
     for line in &output {
+        let sum_feet: usize = line.indices.iter().map(|i| input[*i].foot).sum();
         println!(
-            "- length={}, indices {:?}",
+            "- length={}, indices {:?}, sum of feet {}",
             line.geometry.geodesic_length(),
-            line.indices
+            line.indices,
+            sum_feet
         );
     }
     Ok(())
