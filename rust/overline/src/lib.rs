@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use ordered_float::NotNan;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 // TODO Never aggregate across OSM ID threshold. Plumb through an optional property to restrict
 // aggregation.
@@ -14,9 +14,12 @@ pub struct Input {
     pub foot: usize,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub struct Output {
-    #[serde(deserialize_with = "geojson::de::deserialize_geometry")]
+    #[serde(
+        deserialize_with = "geojson::de::deserialize_geometry",
+        serialize_with = "geojson::ser::serialize_geometry"
+    )]
     pub geometry: geo::LineString<f64>,
     // The indices of Input lines that matched to this segment
     pub indices: Vec<usize>,

@@ -25,6 +25,10 @@ fn main() -> Result<()> {
             sum_feet
         );
     }
+    std::fs::write(
+        "output.geojson",
+        geojson::ser::to_feature_collection_string(&output)?,
+    )?;
     Ok(())
 }
 
