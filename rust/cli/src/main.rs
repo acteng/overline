@@ -2,8 +2,9 @@ use std::time::Instant;
 
 use anyhow::{bail, Result};
 use geo::GeodesicLength;
+use geojson::{Feature, GeoJson};
 
-use overline::{overline, Input};
+use overline::{feature_to_line_string, overline};
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -13,8 +14,12 @@ fn main() -> Result<()> {
 
     println!("Reading and deserializing {}", args[1]);
     let mut now = Instant::now();
-    let raw = std::fs::read_to_string(&args[1])?;
-    let input: Vec<Input> = geojson::de::deserialize_feature_collection_str_to_vec(&raw)?;
+    let geojson: GeoJson = std::fs::read_to_string(&args[1])?.parse()?;
+    let input: Vec<Feature> = if let GeoJson::FeatureCollection(collection) = geojson {
+        collection.features
+    } else {
+        bail!("Input isn't a FeatureCollection");
+    };
     println!("... took {:?}", now.elapsed());
 
     println!("Running overline on {} line-strings", input.len());
@@ -23,18 +28,24 @@ fn main() -> Result<()> {
     println!("... took {:?}", now.elapsed());
 
     // Detailed debugging
-    if false {
+    if true {
+        fn foot(f: &Feature) -> f64 {
+            f.property("foot").unwrap().as_f64().unwrap()
+        }
+
         println!("Input:");
         for (idx, line) in input.iter().enumerate() {
-            println!(
-                "- {idx} has foot={}, length={}",
-                line.foot,
-                line.geometry.geodesic_length()
-            );
+            if let Some(geom) = feature_to_line_string(line) {
+                println!(
+                    "- {idx} has foot={}, length={}",
+                    foot(line),
+                    geom.geodesic_length()
+                );
+            }
         }
         println!("Output:");
         for line in &output {
-            let sum_feet: usize = line.indices.iter().map(|i| input[*i].foot).sum();
+            let sum_feet: f64 = line.indices.iter().map(|i| foot(&input[*i])).sum();
             println!(
                 "- length={}, indices {:?}, sum of feet {}",
                 line.geometry.geodesic_length(),

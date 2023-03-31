@@ -1,14 +1,20 @@
 #[cfg(test)]
 mod tests {
-    use overline::{overline, Input, Output};
+    use geojson::GeoJson;
+    use overline::{overline, Output};
 
     include!(concat!(env!("OUT_DIR"), "/tests.rs"));
 
     fn test(input_path: &str, output_path: &str) {
-        let input: Vec<Input> = geojson::de::deserialize_feature_collection_str_to_vec(
-            &std::fs::read_to_string(input_path).unwrap(),
-        )
-        .unwrap();
+        let geojson: GeoJson = std::fs::read_to_string(input_path)
+            .unwrap()
+            .parse()
+            .unwrap();
+        let input = if let GeoJson::FeatureCollection(collection) = geojson {
+            collection.features
+        } else {
+            panic!("Input isn't a FeatureCollection");
+        };
         let actual_output = overline(&input);
         let expected_output: Vec<Output> = geojson::de::deserialize_feature_collection_str_to_vec(
             &std::fs::read_to_string(output_path).unwrap(),
