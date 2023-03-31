@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use geojson::Feature;
 use ordered_float::NotNan;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 // TODO Never aggregate across OSM ID threshold. Plumb through an optional property to restrict
@@ -34,55 +35,60 @@ pub fn overline(input: &Vec<Feature>) -> Vec<Output> {
     // TODO We also need to split some line segments if they're not matching up at existing points.
 
     // Then look at each input, accumulating points as long all the indices match
-    let mut output = Vec::new();
-    for (idx, input) in input.iter().enumerate() {
-        // This state is reset as we look through this input's points
-        let mut pts_so_far = Vec::new();
-        let mut indices_so_far = Vec::new();
-        let mut keep_this_output = false;
+    input
+        .par_iter()
+        .enumerate()
+        .flat_map(|(idx, input_feature)| {
+            let mut intermediate_output = Vec::new();
 
-        if let Some(geom) = feature_to_line_string(input) {
-            for line in geom.lines() {
-                // The segment is guaranteed to exist
-                let indices = &line_segments[&HashedPoint::new_line(line)];
+            // This state is reset as we look through this input's points
+            let mut pts_so_far = Vec::new();
+            let mut indices_so_far = Vec::new();
+            let mut keep_this_output = false;
 
-                if &indices_so_far == indices {
-                    assert_eq!(*pts_so_far.last().unwrap(), line.start);
-                    pts_so_far.push(line.end);
-                    continue;
-                } else if !pts_so_far.is_empty() {
-                    // The overlap ends here
-                    let add = Output {
-                        geometry: std::mem::take(&mut pts_so_far).into(),
-                        indices: std::mem::take(&mut indices_so_far),
-                    };
-                    if keep_this_output {
-                        output.push(add);
+            if let Some(geom) = feature_to_line_string(input_feature) {
+                for line in geom.lines() {
+                    // The segment is guaranteed to exist
+                    let indices = &line_segments[&HashedPoint::new_line(line)];
+
+                    if &indices_so_far == indices {
+                        assert_eq!(*pts_so_far.last().unwrap(), line.start);
+                        pts_so_far.push(line.end);
+                        continue;
+                    } else if !pts_so_far.is_empty() {
+                        // The overlap ends here
+                        let add = Output {
+                            geometry: std::mem::take(&mut pts_so_far).into(),
+                            indices: std::mem::take(&mut indices_so_far),
+                        };
+                        if keep_this_output {
+                            intermediate_output.push(add);
+                        }
+                        // Reset below
                     }
-                    // Reset below
+
+                    assert!(pts_so_far.is_empty());
+                    pts_so_far.push(line.start);
+                    pts_so_far.push(line.end);
+                    indices_so_far = indices.clone();
+                    // Say we're processing input 2, and we have a segment with indices [2, 5]. We want to
+                    // add it to output. But later we'll work on input 5 and see the same segment with
+                    // indices [2, 5]. We don't want to add it again, so we'll skip it using the logic
+                    // below, since we process input in order.
+                    keep_this_output = indices_so_far.iter().all(|i| *i >= idx);
                 }
-
-                assert!(pts_so_far.is_empty());
-                pts_so_far.push(line.start);
-                pts_so_far.push(line.end);
-                indices_so_far = indices.clone();
-                // Say we're processing input 2, and we have a segment with indices [2, 5]. We want to
-                // add it to output. But later we'll work on input 5 and see the same segment with
-                // indices [2, 5]. We don't want to add it again, so we'll skip it using the logic
-                // below, since we process input in order.
-                keep_this_output = indices_so_far.iter().all(|i| *i >= idx);
             }
-        }
-        // This input ended; add to output if needed
-        if !pts_so_far.is_empty() && keep_this_output {
-            output.push(Output {
-                geometry: pts_so_far.into(),
-                indices: indices_so_far,
-            });
-        }
-    }
+            // This input ended; add to output if needed
+            if !pts_so_far.is_empty() && keep_this_output {
+                intermediate_output.push(Output {
+                    geometry: pts_so_far.into(),
+                    indices: indices_so_far,
+                });
+            }
 
-    output
+            intermediate_output
+        })
+        .collect()
 }
 
 pub fn feature_to_line_string(f: &Feature) -> Option<geo::LineString<f64>> {

@@ -3,6 +3,7 @@ use std::time::Instant;
 use anyhow::{bail, Result};
 use geo::GeodesicLength;
 use geojson::{Feature, FeatureCollection, GeoJson};
+use rayon::prelude::*;
 
 use overline::{feature_to_line_string, overline, Output};
 
@@ -127,41 +128,42 @@ fn aggregate_properties(
     grouped_indices: &Vec<Output>,
     properties: Vec<(String, Aggregation)>,
 ) -> Vec<Feature> {
-    let mut output = Vec::new();
-    for grouped in grouped_indices {
-        // Copy the geometry
-        let mut feature = Feature {
-            geometry: Some(geojson::Geometry {
-                value: geojson::Value::from(&grouped.geometry),
+    grouped_indices
+        .par_iter()
+        .map(|grouped| {
+            // Copy the geometry
+            let mut feature = Feature {
+                geometry: Some(geojson::Geometry {
+                    value: geojson::Value::from(&grouped.geometry),
+                    bbox: None,
+                    foreign_members: None,
+                }),
+                properties: None,
                 bbox: None,
+                id: None,
                 foreign_members: None,
-            }),
-            properties: None,
-            bbox: None,
-            id: None,
-            foreign_members: None,
-        };
-        // Aggregate each specified property
-        for (key, aggregation) in &properties {
-            // Ignore features without this property
-            let mut values = grouped
-                .indices
-                .iter()
-                .flat_map(|i| input[*i].property(&key));
-            match aggregation {
-                Aggregation::KeepAny => {
-                    if let Some(value) = values.next() {
-                        feature.set_property(key, value.clone());
+            };
+            // Aggregate each specified property
+            for (key, aggregation) in &properties {
+                // Ignore features without this property
+                let mut values = grouped
+                    .indices
+                    .iter()
+                    .flat_map(|i| input[*i].property(&key));
+                match aggregation {
+                    Aggregation::KeepAny => {
+                        if let Some(value) = values.next() {
+                            feature.set_property(key, value.clone());
+                        }
+                    }
+                    Aggregation::SumFloat => {
+                        feature.set_property(key, values.flat_map(|x| x.as_f64()).sum::<f64>());
                     }
                 }
-                Aggregation::SumFloat => {
-                    feature.set_property(key, values.flat_map(|x| x.as_f64()).sum::<f64>());
-                }
             }
-        }
-        output.push(feature);
-    }
-    output
+            feature
+        })
+        .collect()
 }
 
 /* Test cases:
