@@ -1,36 +1,34 @@
 use std::collections::HashMap;
 
+use geojson::Feature;
 use ordered_float::NotNan;
 use serde::{Deserialize, Serialize};
 
 // TODO Never aggregate across OSM ID threshold. Plumb through an optional property to restrict
 // aggregation.
 
-// TODO Keep geojson out of this crate?
-#[derive(Deserialize)]
-pub struct Input {
-    #[serde(deserialize_with = "geojson::de::deserialize_geometry")]
-    pub geometry: geo::LineString<f64>,
-    pub foot: usize,
-}
-
-#[derive(Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Output {
     #[serde(
-        deserialize_with = "geojson::de::deserialize_geometry",
-        serialize_with = "geojson::ser::serialize_geometry"
+        serialize_with = "geojson::ser::serialize_geometry",
+        deserialize_with = "geojson::de::deserialize_geometry"
     )]
     pub geometry: geo::LineString<f64>,
     // The indices of Input lines that matched to this segment
     pub indices: Vec<usize>,
 }
 
-pub fn overline(input: &Vec<Input>) -> Vec<Output> {
+/// Ignores anything aside from LineStrings. Returns LineStrings chopped up to remove overlap, with
+/// exactly one property -- `indices`, an array of numbers indexing the input that share that
+/// geometry.
+pub fn overline(input: &Vec<Feature>) -> Vec<Output> {
     // For every individual (directed) line segment, record the index of inputs matching there
     let mut line_segments: HashMap<(HashedPoint, HashedPoint), Vec<usize>> = HashMap::new();
     for (idx, input) in input.iter().enumerate() {
-        for line in input.geometry.lines().map(HashedPoint::new_line) {
-            line_segments.entry(line).or_insert_with(Vec::new).push(idx);
+        if let Some(geom) = feature_to_line_string(input) {
+            for line in geom.lines().map(HashedPoint::new_line) {
+                line_segments.entry(line).or_insert_with(Vec::new).push(idx);
+            }
         }
     }
     // TODO We also need to split some line segments if they're not matching up at existing points.
@@ -43,35 +41,37 @@ pub fn overline(input: &Vec<Input>) -> Vec<Output> {
         let mut indices_so_far = Vec::new();
         let mut keep_this_output = false;
 
-        for line in input.geometry.lines() {
-            // The segment is guaranteed to exist
-            let indices = &line_segments[&HashedPoint::new_line(line)];
+        if let Some(geom) = feature_to_line_string(input) {
+            for line in geom.lines() {
+                // The segment is guaranteed to exist
+                let indices = &line_segments[&HashedPoint::new_line(line)];
 
-            if &indices_so_far == indices {
-                assert_eq!(*pts_so_far.last().unwrap(), line.start);
-                pts_so_far.push(line.end);
-                continue;
-            } else if !pts_so_far.is_empty() {
-                // The overlap ends here
-                let add = Output {
-                    geometry: std::mem::take(&mut pts_so_far).into(),
-                    indices: std::mem::take(&mut indices_so_far),
-                };
-                if keep_this_output {
-                    output.push(add);
+                if &indices_so_far == indices {
+                    assert_eq!(*pts_so_far.last().unwrap(), line.start);
+                    pts_so_far.push(line.end);
+                    continue;
+                } else if !pts_so_far.is_empty() {
+                    // The overlap ends here
+                    let add = Output {
+                        geometry: std::mem::take(&mut pts_so_far).into(),
+                        indices: std::mem::take(&mut indices_so_far),
+                    };
+                    if keep_this_output {
+                        output.push(add);
+                    }
+                    // Reset below
                 }
-                // Reset below
-            }
 
-            assert!(pts_so_far.is_empty());
-            pts_so_far.push(line.start);
-            pts_so_far.push(line.end);
-            indices_so_far = indices.clone();
-            // Say we're processing input 2, and we have a segment with indices [2, 5]. We want to
-            // add it to output. But later we'll work on input 5 and see the same segment with
-            // indices [2, 5]. We don't want to add it again, so we'll skip it using the logic
-            // below, since we process input in order.
-            keep_this_output = indices_so_far.iter().all(|i| *i >= idx);
+                assert!(pts_so_far.is_empty());
+                pts_so_far.push(line.start);
+                pts_so_far.push(line.end);
+                indices_so_far = indices.clone();
+                // Say we're processing input 2, and we have a segment with indices [2, 5]. We want to
+                // add it to output. But later we'll work on input 5 and see the same segment with
+                // indices [2, 5]. We don't want to add it again, so we'll skip it using the logic
+                // below, since we process input in order.
+                keep_this_output = indices_so_far.iter().all(|i| *i >= idx);
+            }
         }
         // This input ended; add to output if needed
         if !pts_so_far.is_empty() && keep_this_output {
@@ -83,6 +83,12 @@ pub fn overline(input: &Vec<Input>) -> Vec<Output> {
     }
 
     output
+}
+
+pub fn feature_to_line_string(f: &Feature) -> Option<geo::LineString<f64>> {
+    f.geometry
+        .as_ref()
+        .and_then(|x| TryInto::<geo::LineString<f64>>::try_into(x).ok())
 }
 
 // Assume there are no precision issues with the input. If we wanted to quantize, we'd do it here.
