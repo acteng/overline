@@ -5,7 +5,7 @@ use geo::GeodesicLength;
 use geojson::{Feature, FeatureCollection, GeoJson};
 use rayon::prelude::*;
 
-use overline::{feature_to_line_string, overline, Output};
+use overline::{overline, Input, Output};
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -15,12 +15,9 @@ fn main() -> Result<()> {
 
     println!("Reading and deserializing {}", args[1]);
     let mut now = Instant::now();
-    let geojson: GeoJson = std::fs::read_to_string(&args[1])?.parse()?;
-    let input: Vec<Feature> = if let GeoJson::FeatureCollection(collection) = geojson {
-        collection.features
-    } else {
-        bail!("Input isn't a FeatureCollection");
-    };
+    let input: Vec<Input> = geojson::de::deserialize_feature_collection_str_to_vec(
+        &std::fs::read_to_string(&args[1])?,
+    )?;
     println!("... took {:?}", now.elapsed());
 
     println!("Running overline on {} line-strings", input.len());
@@ -50,19 +47,17 @@ fn main() -> Result<()> {
             ],
         )?;
     } else if args[1] == "tests/atip_input.geojson" {
-        fn foot(f: &Feature) -> f64 {
-            f.property("foot").unwrap().as_f64().unwrap()
+        fn foot(f: &Input) -> f64 {
+            f.properties.get("foot").unwrap().as_f64().unwrap()
         }
 
         println!("Input:");
         for (idx, line) in input.iter().enumerate() {
-            if let Some(geom) = feature_to_line_string(line) {
-                println!(
-                    "- {idx} has foot={}, length={}",
-                    foot(line),
-                    geom.geodesic_length()
-                );
-            }
+            println!(
+                "- {idx} has foot={}, length={}",
+                foot(line),
+                line.geometry.geodesic_length()
+            );
         }
         println!("Output:");
         for line in &output {
@@ -88,7 +83,7 @@ fn main() -> Result<()> {
 }
 
 fn aggregate_and_write(
-    input: Vec<Feature>,
+    input: Vec<Input>,
     output: Vec<Output>,
     properties: Vec<(String, Aggregation)>,
 ) -> Result<()> {
@@ -124,7 +119,7 @@ enum Aggregation {
 }
 
 fn aggregate_properties(
-    input: &Vec<Feature>,
+    input: &Vec<Input>,
     grouped_indices: &Vec<Output>,
     properties: Vec<(String, Aggregation)>,
 ) -> Vec<Feature> {
@@ -149,7 +144,7 @@ fn aggregate_properties(
                 let mut values = grouped
                     .indices
                     .iter()
-                    .flat_map(|i| input[*i].property(&key));
+                    .flat_map(|i| input[*i].properties.get(key));
                 match aggregation {
                     Aggregation::KeepAny => {
                         if let Some(value) = values.next() {
