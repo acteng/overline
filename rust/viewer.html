@@ -1,0 +1,149 @@
+<html>
+  <head>
+    <title>overline viewer</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+      integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+      integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
+      crossorigin=""
+    ></script>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      .leaflet-container {
+        height: 80%;
+        width: 100%;
+        max-width: 100%;
+        max-height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <input type="file" id="load" />
+    </div>
+    <div>
+      <label for="weight">Weight key</label>
+      <select id="weight"></select>
+    </div>
+    <div id="weight-info"></div>
+    <div><pre id="current-props">Props</pre></div>
+    <div id="map"></div>
+
+    <script>
+      const map = L.map("map").setView([51.4995, -0.0978], 14);
+      const tiles = L.tileLayer(
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          maxZoom: 19,
+          attribution:
+            '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        }
+      ).addTo(map);
+
+      let gj = null;
+      let gjLayer = null;
+      let min = Number.MAX_VALUE;
+      let max = Number.MIN_VALUE;
+
+      document.getElementById("load").onchange = (e) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            gj = JSON.parse(e.target.result);
+            loadFile();
+          } catch (err) {
+            window.alert(`Couldn't load file: ${err}`);
+          }
+        };
+        reader.readAsText(e.target.files[0]);
+      };
+
+      let weightChoices = document.getElementById("weight");
+      weightChoices.onchange = (e) => {
+        useKey(e.target.value);
+      };
+
+      function loadFile() {
+        if (gjLayer) {
+          gjLayer.remove();
+          weightChoices.replaceChildren();
+        }
+
+        // Find numeric properties
+        for (let [key, value] of Object.entries(gj.features[0].properties)) {
+          if (Number.isFinite(value)) {
+            let option = document.createElement("option");
+            option.value = key;
+            option.textContent = key;
+            weightChoices.appendChild(option);
+          }
+        }
+
+        if (weightChoices.children.length > 0) {
+          useKey(weightChoices.children[0].value);
+        }
+      }
+
+      let currentProps = document.getElementById("current-props");
+
+      function useKey(key) {
+        if (gjLayer) {
+          gjLayer.remove();
+        }
+
+        min = Number.MAX_VALUE;
+        max = Number.MIN_VALUE;
+
+        for (let f of gj.features) {
+          if (f.properties.hasOwnProperty(key)) {
+            let value = f.properties[key];
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+          }
+        }
+        document.getElementById("weight-info").textContent = `${min} to ${max}`;
+
+        gjLayer = L.geoJSON(gj, {
+          onEachFeature: (feature, layer) => {
+            layer.setStyle({
+              color: "red",
+              weight: weightProperty(feature.properties[key]),
+              opacity: 0.5,
+            });
+            layer.on({
+              mouseover: (ev) => {
+                ev.target.setStyle({
+                  opacity: 1.0,
+                });
+                currentProps.textContent = JSON.stringify(feature.properties);
+              },
+              mouseout: (ev) => {
+                ev.target.setStyle({
+                  opacity: 0.5,
+                });
+                currentProps.textContent = "Props";
+              },
+            });
+          },
+        }).addTo(map);
+        map.fitBounds(gjLayer.getBounds());
+      }
+
+      function weightProperty(value) {
+        let percent = (value - min) / (max - min);
+        // Return weight between 10 and 30
+        return 10 + (30 - 10) * percent;
+      }
+    </script>
+  </body>
+</html>
