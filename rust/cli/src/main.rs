@@ -4,6 +4,7 @@ use anyhow::{bail, Result};
 use clap::{Arg, ArgAction, Command};
 use geo::GeodesicLength;
 use geojson::{Feature, FeatureCollection, GeoJson};
+use ordered_float::NotNan;
 use rayon::prelude::*;
 
 use overline::{feature_to_line_string, overline, Output};
@@ -17,7 +18,10 @@ fn main() -> Result<()> {
         // TODO Just indices, or aggregate something?
         .arg(Arg::new("summary").short('s').long("summary").help("Print a summary of the input and output, summing the one specified numeric property").action(ArgAction::Set))
         .arg(Arg::new("keep_any").long("keep_any").action(ArgAction::Append).help("Copy the value of this property from any input feature containing it."))
-        .arg(Arg::new("sum_float").long("sum_float").action(ArgAction::Append).help("Sum this property as a floating point."))
+        .arg(Arg::new("sum").long("sum").action(ArgAction::Append).help("Sum this property as a floating point."))
+        .arg(Arg::new("min").long("min").action(ArgAction::Append).help("Minimum of this property as a floating point."))
+        .arg(Arg::new("max").long("max").action(ArgAction::Append).help("Maximum of this property as a floating point."))
+        .arg(Arg::new("mean").long("mean").action(ArgAction::Append).help("Mean (average) of this property as a floating point."))
         .get_matches();
     let input_path = args.remove_one::<String>("FILE").unwrap();
     let output_path = args.remove_one::<String>("output").unwrap();
@@ -70,7 +74,10 @@ fn main() -> Result<()> {
     let mut aggregate_props = Vec::new();
     for (name, x) in [
         ("keep_any", Aggregation::KeepAny),
-        ("sum_float", Aggregation::SumFloat),
+        ("sum", Aggregation::Sum),
+        ("min", Aggregation::Min),
+        ("max", Aggregation::Max),
+        ("mean", Aggregation::Mean),
     ] {
         if let Some(values) = args.remove_many::<String>(name) {
             for key in values {
@@ -119,8 +126,16 @@ enum Aggregation {
     /// differs among the input, it's undefined which value will be used.
     KeepAny,
     /// Sum this property as a floating point.
-    SumFloat,
+    Sum,
+    /// Minimum of this property as a floating point.
+    Min,
+    /// Maximum of this property as a floating point.
+    Max,
+    /// Mean (average) of this property as a floating point.
+    Mean,
 }
+// TODO Percentile
+// TODO The value coming from the longest piece of LineString
 
 fn aggregate_properties(
     input: &Vec<Feature>,
@@ -155,8 +170,33 @@ fn aggregate_properties(
                             feature.set_property(key, value.clone());
                         }
                     }
-                    Aggregation::SumFloat => {
+                    Aggregation::Sum => {
                         feature.set_property(key, values.flat_map(|x| x.as_f64()).sum::<f64>());
+                    }
+                    Aggregation::Min => {
+                        if let Some(min) =
+                            values.flat_map(|x| x.as_f64()).flat_map(NotNan::new).min()
+                        {
+                            feature.set_property(key, min.into_inner());
+                        }
+                    }
+                    Aggregation::Max => {
+                        if let Some(max) =
+                            values.flat_map(|x| x.as_f64()).flat_map(NotNan::new).max()
+                        {
+                            feature.set_property(key, max.into_inner());
+                        }
+                    }
+                    Aggregation::Mean => {
+                        let mut sum = 0.0;
+                        let mut count = 0;
+                        for x in values.flat_map(|x| x.as_f64()) {
+                            sum += x;
+                            count += 1;
+                        }
+                        if count > 0 {
+                            feature.set_property(key, sum / count as f64);
+                        }
                     }
                 }
             }
