@@ -18,9 +18,9 @@ sum(sf::st_length(rnet) * rnet$All)
 # Test an example with 2 lines parallel for some of the way:
 library(sf)
 routes = sf::read_sf("test-data/crossing-routes-minimal-leeds.geojson")
-routes$description = integer(routes$description)
+# routes$description = integer(routes$description)
 rnet = overline(sl = routes, attrib = "description")
-sf::write_sf(rnet, "test-data/crossing-routes-minimal-leeds-output.geojson")
+sf::write_sf(rnet, "test-data/crossing-routes-minimal-leeds-output.geojson", delete_dsn = TRUE)
 # Test total travelled: same for both datasets
 sum(sf::st_length(routes) * routes$description)
 sum(sf::st_length(rnet) * rnet$description)

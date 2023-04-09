@@ -254,7 +254,7 @@
           }
         ],
         "intervention_type": "route",
-        "description": "3",
+        "description": 3,
         "name": "ITS to Chemic"
       },
       "type": "Feature",
@@ -461,7 +461,7 @@
           }
         ],
         "intervention_type": "route",
-        "description": "1",
+        "description": 1,
         "name": "Union to skatepark"
       },
       "type": "Feature",
