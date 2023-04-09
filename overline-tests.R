@@ -29,3 +29,10 @@ library(tmap)
 m1 = tm_shape(routes) + tm_lines(col = "description", palette = "Blues", scale = 9, breaks = 1:5, as.count = TRUE) + tm_layout(scale = 3)
 m2 = tm_shape(rnet) + tm_lines(col = "description", palette = "Blues", scale = 9, breaks = 1:5, as.count = TRUE) + tm_layout(scale = 3)
 tmap_arrange(m1, m2, ncol = 2)
+
+# Test with Rust version:
+command = "cargo run --manifest-path rust/Cargo.toml test-data/crossing-routes-minimal-leeds.geojson -o test-data/crossing-routes-minimal-leeds-output-rust.geojson --sum description"
+system(command)
+rnet_rust = sf::read_sf("test-data/crossing-routes-minimal-leeds-output-rust.geojson")
+summary(rnet_rust)
+tm_shape(rnet_rust) + tm_lines(col = "description", palette = "Blues", scale = 9, breaks = 1:5, as.count = TRUE) + tm_layout(scale = 3)
