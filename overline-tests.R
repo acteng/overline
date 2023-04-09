@@ -35,4 +35,21 @@ command = "cargo run --manifest-path rust/Cargo.toml test-data/crossing-routes-m
 system(command)
 rnet_rust = sf::read_sf("test-data/crossing-routes-minimal-leeds-output-rust.geojson")
 summary(rnet_rust)
-tm_shape(rnet_rust) + tm_lines(col = "description", palette = "Blues", scale = 9, breaks = 1:5, as.count = TRUE) + tm_layout(scale = 3)
+tm_shape(rnet_rust) + tm_lines(col = "description", palette = "Blues", scale = 9, breaks = 1:5, as.count = TRUE) + tm_layout(scale = 3, title = "Rust version")
+
+# Test example with 2 lines parallel for some of the way:
+library(sf)
+library(stplanr)
+line1 = sf::st_linestring(matrix(c(0, 1, 0, 0), ncol = 2))
+line2 = sf::st_linestring(matrix(c(
+    0.2, -0.1,
+    0.2, 0,
+    0.8, 0,
+    0.8, 0.1
+    ), ncol = 2, byrow = TRUE))
+plot(line1, col = "red", lwd = 9)
+plot(line2, col = "blue", lwd = 5, add = TRUE)
+lines_without_shared_vertices = sf::st_sfc(line1, line2)
+dfr = data.frame(value = c(1, 2))
+lines_without_shared_vertices_sf = sf::st_sf(dfr, geometry = lines_without_shared_vertices)
+lines_without_shared_vertices_overline = overline(sl = lines_without_shared_vertices_sf, attrib = "value")
