@@ -52,4 +52,8 @@ plot(line2, col = "blue", lwd = 5, add = TRUE)
 lines_without_shared_vertices = sf::st_sfc(line1, line2)
 dfr = data.frame(value = c(1, 2))
 lines_without_shared_vertices_sf = sf::st_sf(dfr, geometry = lines_without_shared_vertices)
+sf::st_crs(lines_without_shared_vertices_sf) = "EPSG:4326"
+sf::write_sf(lines_without_shared_vertices_sf, "test-data/lines_without_shared_vertices_sf.geojson", delete_dsn = TRUE)
 lines_without_shared_vertices_overline = overline(sl = lines_without_shared_vertices_sf, attrib = "value")
+tm_shape(lines_without_shared_vertices_overline) + tm_lines(col = "value", palette = "Blues", scale = 9, breaks = 1:5, as.count = TRUE) + tm_layout(scale = 3, title = "R version")
+sf::write_sf(lines_without_shared_vertices_overline, "test-data/lines_without_shared_vertices_overline_r.geojson", delete_dsn = TRUE)
