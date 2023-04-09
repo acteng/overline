@@ -57,3 +57,7 @@ sf::write_sf(lines_without_shared_vertices_sf, "test-data/lines_without_shared_v
 lines_without_shared_vertices_overline = overline(sl = lines_without_shared_vertices_sf, attrib = "value")
 tm_shape(lines_without_shared_vertices_overline) + tm_lines(col = "value", palette = "Blues", scale = 9, breaks = 1:5, as.count = TRUE) + tm_layout(scale = 3, title = "R version")
 sf::write_sf(lines_without_shared_vertices_overline, "test-data/lines_without_shared_vertices_overline_r.geojson", delete_dsn = TRUE)
+
+# Test total travelled: same for both datasets
+sum(sf::st_length(lines_without_shared_vertices_sf) * lines_without_shared_vertices_sf$value)
+sum(sf::st_length(lines_without_shared_vertices_overline) * lines_without_shared_vertices_overline$value)
