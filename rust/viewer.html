@@ -91,6 +91,8 @@
 
         if (weightChoices.children.length > 0) {
           useKey(weightChoices.children[0].value);
+        } else {
+          window.alert("Warning: no numeric properties, can't visualize this");
         }
       }
 
@@ -140,7 +142,7 @@
       }
 
       function weightProperty(value) {
-        let percent = (value - min) / (max - min);
+        let percent = (min != max) ? (value - min) / (max - min) : 1.0;
         // Return weight between 10 and 30
         return 10 + (30 - 10) * percent;
       }
