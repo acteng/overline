@@ -5,6 +5,10 @@ use ordered_float::NotNan;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+pub use aggregation::{aggregate_properties, Aggregation};
+
+mod aggregation;
+
 // TODO Never aggregate across OSM ID threshold. Plumb through an optional property to restrict
 // aggregation.
 
@@ -15,7 +19,7 @@ pub struct Output {
         deserialize_with = "geojson::de::deserialize_geometry"
     )]
     pub geometry: geo::LineString<f64>,
-    // The indices of Input lines that matched to this segment
+    /// The indices of Input lines that matched to this segment
     pub indices: Vec<usize>,
 }
 

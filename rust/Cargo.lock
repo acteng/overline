@@ -132,9 +132,7 @@ dependencies = [
  "clap",
  "geo",
  "geojson",
- "ordered-float",
  "overline",
- "rayon",
 ]
 
 [[package]]

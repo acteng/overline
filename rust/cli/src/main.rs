@@ -4,10 +4,8 @@ use anyhow::{bail, Result};
 use clap::{Arg, ArgAction, Command};
 use geo::GeodesicLength;
 use geojson::{Feature, FeatureCollection, GeoJson};
-use ordered_float::NotNan;
-use rayon::prelude::*;
 
-use overline::{feature_to_line_string, overline, Output};
+use overline::{aggregate_properties, feature_to_line_string, overline, Aggregation, Output};
 
 fn main() -> Result<()> {
     let mut args = Command::new("overline")
@@ -42,33 +40,7 @@ fn main() -> Result<()> {
     println!("... took {:?}", now.elapsed());
 
     if let Some(sum_property) = args.get_one::<String>("summary") {
-        let get_property = |f: &Feature| {
-            f.property(&sum_property)
-                .expect(&format!("don't have property {sum_property}"))
-                .as_f64()
-                .expect(&format!("property {sum_property} isn't numeric"))
-        };
-
-        println!("Input:");
-        for (idx, line) in input.iter().enumerate() {
-            if let Some(geom) = feature_to_line_string(line) {
-                println!(
-                    "- {idx} has {sum_property}={}, length={}",
-                    get_property(line),
-                    geom.geodesic_length()
-                );
-            }
-        }
-        println!("Output:");
-        for line in &output {
-            let sum: f64 = line.indices.iter().map(|i| get_property(&input[*i])).sum();
-            println!(
-                "- length={}, indices {:?}, sum of {sum_property} {}",
-                line.geometry.geodesic_length(),
-                line.indices,
-                sum
-            );
-        }
+        summarize(&input, &output, sum_property);
     }
 
     let mut aggregate_props = Vec::new();
@@ -120,96 +92,32 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[derive(Clone, Copy)]
-enum Aggregation {
-    /// Copy the value of this property from any input feature containing it. If the property
-    /// differs among the input, it's undefined which value will be used.
-    KeepAny,
-    /// Sum this property as a floating point.
-    Sum,
-    /// Minimum of this property as a floating point.
-    Min,
-    /// Maximum of this property as a floating point.
-    Max,
-    /// Mean (average) of this property as a floating point.
-    Mean,
-}
-// TODO Percentile
-// TODO The value coming from the longest piece of LineString
+fn summarize(input: &Vec<Feature>, output: &Vec<Output>, sum_property: &str) {
+    let get_property = |f: &Feature| {
+        f.property(sum_property)
+            .expect(&format!("don't have property {sum_property}"))
+            .as_f64()
+            .expect(&format!("property {sum_property} isn't numeric"))
+    };
 
-fn aggregate_properties(
-    input: &Vec<Feature>,
-    grouped_indices: &Vec<Output>,
-    properties: Vec<(String, Aggregation)>,
-) -> Vec<Feature> {
-    grouped_indices
-        .par_iter()
-        .map(|grouped| {
-            // Copy the geometry
-            let mut feature = Feature {
-                geometry: Some(geojson::Geometry {
-                    value: geojson::Value::from(&grouped.geometry),
-                    bbox: None,
-                    foreign_members: None,
-                }),
-                properties: None,
-                bbox: None,
-                id: None,
-                foreign_members: None,
-            };
-            // Aggregate each specified property
-            for (key, aggregation) in &properties {
-                // Ignore features without this property
-                let mut values = grouped
-                    .indices
-                    .iter()
-                    .flat_map(|i| input[*i].property(&key));
-                match aggregation {
-                    Aggregation::KeepAny => {
-                        if let Some(value) = values.next() {
-                            feature.set_property(key, value.clone());
-                        }
-                    }
-                    Aggregation::Sum => {
-                        feature.set_property(key, values.flat_map(|x| x.as_f64()).sum::<f64>());
-                    }
-                    Aggregation::Min => {
-                        if let Some(min) =
-                            values.flat_map(|x| x.as_f64()).flat_map(NotNan::new).min()
-                        {
-                            feature.set_property(key, min.into_inner());
-                        }
-                    }
-                    Aggregation::Max => {
-                        if let Some(max) =
-                            values.flat_map(|x| x.as_f64()).flat_map(NotNan::new).max()
-                        {
-                            feature.set_property(key, max.into_inner());
-                        }
-                    }
-                    Aggregation::Mean => {
-                        let mut sum = 0.0;
-                        let mut count = 0;
-                        for x in values.flat_map(|x| x.as_f64()) {
-                            sum += x;
-                            count += 1;
-                        }
-                        if count > 0 {
-                            feature.set_property(key, sum / count as f64);
-                        }
-                    }
-                }
-            }
-            feature
-        })
-        .collect()
+    println!("Input:");
+    for (idx, line) in input.iter().enumerate() {
+        if let Some(geom) = feature_to_line_string(line) {
+            println!(
+                "- {idx} has {sum_property}={}, length={}",
+                get_property(line),
+                geom.geodesic_length()
+            );
+        }
+    }
+    println!("Output:");
+    for line in output {
+        let sum: f64 = line.indices.iter().map(|i| get_property(&input[*i])).sum();
+        println!(
+            "- length={}, indices {:?}, sum of {sum_property} {}",
+            line.geometry.geodesic_length(),
+            line.indices,
+            sum
+        );
+    }
 }
-
-/* Test cases:
- * same line
- * same line, reversed
- * cross at a single point
- * slightly offset coordinates
- *
- * TODO Include a little Leaflet viewer that can load an input/output file pair and display it
- */
