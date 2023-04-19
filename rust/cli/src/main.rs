@@ -5,7 +5,9 @@ use clap::{Arg, ArgAction, Command};
 use geo::GeodesicLength;
 use geojson::{Feature, FeatureCollection, GeoJson};
 
-use overline::{aggregate_properties, feature_to_line_string, overline, Aggregation, Output};
+use overline::{
+    aggregate_properties, feature_to_line_string, overline, Aggregation, Options, Output,
+};
 
 fn main() -> Result<()> {
     let mut args = Command::new("overline")
@@ -24,6 +26,9 @@ fn main() -> Result<()> {
     let input_path = args.remove_one::<String>("FILE").unwrap();
     let output_path = args.remove_one::<String>("output").unwrap();
 
+    // TODO Add a flag
+    let options = Options::default();
+
     println!("Reading and deserializing {input_path}");
     let mut now = Instant::now();
     let geojson: GeoJson = std::fs::read_to_string(input_path)?.parse()?;
@@ -36,7 +41,7 @@ fn main() -> Result<()> {
 
     println!("Running overline on {} line-strings", input.len());
     now = Instant::now();
-    let output = overline(&input);
+    let output = overline(&input, options);
     println!("... took {:?}", now.elapsed());
 
     if let Some(sum_property) = args.get_one::<String>("summary") {

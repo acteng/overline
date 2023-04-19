@@ -1,19 +1,35 @@
 #[cfg(test)]
 mod tests {
     use geojson::FeatureCollection;
-    use overline::{aggregate_properties, overline, Aggregation};
+    use overline::{aggregate_properties, overline, Aggregation, Options};
 
     #[test]
     fn test_atip() {
-        test("atip_input.geojson", "atip_output.geojson");
+        test(
+            "atip_input.geojson",
+            "atip_output.geojson",
+            Options::default(),
+        );
     }
 
-    fn test(input_path: &str, output_path: &str) {
+    #[test]
+    fn test_direction() {
+        //test("direction_input.geojson", "direction_input.geojson");
+        test(
+            "direction_input.geojson",
+            "direction_output.geojson",
+            Options {
+                ignore_direction: true,
+            },
+        );
+    }
+
+    fn test(input_path: &str, output_path: &str, options: Options) {
         // Just compare as strings. Upon failure, we write and ask the user to check those anyway.
         let input_string = std::fs::read_to_string(input_path).unwrap();
 
         let input = input_string.parse::<FeatureCollection>().unwrap().features;
-        let grouped_indices = overline(&input);
+        let grouped_indices = overline(&input, options);
         let actual_output = serde_json::to_string_pretty(&FeatureCollection {
             features: aggregate_properties(
                 &input,
