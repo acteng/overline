@@ -1,5 +1,4 @@
- {
-  "type": "FeatureCollection",
+{
   "features": [
     {
       "geometry": {
@@ -768,8 +767,8 @@
         "type": "LineString"
       },
       "properties": {
-        "name": "route1",
-        "foot": 50
+        "foot": 50,
+        "name": "route1"
       },
       "type": "Feature"
     },
@@ -1964,10 +1963,11 @@
         "type": "LineString"
       },
       "properties": {
-        "name": "route2",
-        "foot": 30
+        "foot": 30,
+        "name": "route2"
       },
       "type": "Feature"
     }
-  ]
+  ],
+  "type": "FeatureCollection"
 }

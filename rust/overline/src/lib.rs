@@ -9,9 +9,6 @@ pub use aggregation::{aggregate_properties, Aggregation};
 
 mod aggregation;
 
-// TODO Never aggregate across OSM ID threshold. Plumb through an optional property to restrict
-// aggregation.
-
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Output {
     #[serde(
@@ -36,8 +33,6 @@ pub fn overline(input: &Vec<Feature>) -> Vec<Output> {
             }
         }
     }
-    // TODO We also need to split some line segments if they're not matching up at existing points.
-
     // Then look at each input, accumulating points as long all the indices match
     input
         .par_iter()
