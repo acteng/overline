@@ -40,12 +40,12 @@ pub fn overline(input: &Vec<Feature>) -> Vec<Output> {
         .flat_map(|(idx, input_feature)| {
             let mut intermediate_output = Vec::new();
 
-            // This state is reset as we look through this input's points
-            let mut pts_so_far = Vec::new();
-            let mut indices_so_far = Vec::new();
-            let mut keep_this_output = false;
-
             if let Some(geom) = feature_to_line_string(input_feature) {
+                // This state is reset as we look through this input's points
+                let mut pts_so_far = Vec::new();
+                let mut indices_so_far = Vec::new();
+                let mut keep_this_output = false;
+
                 for line in geom.lines() {
                     // The segment is guaranteed to exist
                     let indices = &line_segments[&HashedPoint::new_line(line)];
@@ -76,13 +76,14 @@ pub fn overline(input: &Vec<Feature>) -> Vec<Output> {
                     // below, since we process input in order.
                     keep_this_output = indices_so_far.iter().all(|i| *i >= idx);
                 }
-            }
-            // This input ended; add to output if needed
-            if !pts_so_far.is_empty() && keep_this_output {
-                intermediate_output.push(Output {
-                    geometry: pts_so_far.into(),
-                    indices: indices_so_far,
-                });
+
+                // This input ended; add to output if needed
+                if !pts_so_far.is_empty() && keep_this_output {
+                    intermediate_output.push(Output {
+                        geometry: pts_so_far.into(),
+                        indices: indices_so_far,
+                    });
+                }
             }
 
             intermediate_output
