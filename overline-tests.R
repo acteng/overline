@@ -67,5 +67,35 @@ list.files("rust/tests/")
 lines_with_overlaps = sf::read_sf("rust/tests/atip_input.geojson")
 lines_with_overlaps_r_overline = stplanr::overline(sl = lines_with_overlaps, attrib = "foot")
 sf::write_sf(lines_with_overlaps_r_overline, "test-data/lines_with_overlaps_r_overline.geojson", delete_dsn = TRUE)
-lines_with_overlaps_rust_overline = sf::read_sf("rust/tests/atip_output.geojson")
-waldo::compare(line)
+lines_with_overlaps_rust_overline = sf::st_read("rust/tests/atip_output.geojson")
+waldo::compare(lines_with_overlaps_r_overline$geometry, lines_with_overlaps_rust_overline$geometry)
+plot(lines_with_overlaps_r_overline$geometry[1], col = "red", lwd = 9)
+plot(lines_with_overlaps_rust_overline$geometry[1], col = "red", lwd = 9)
+
+# Re-order output function
+reorder_sf = function(sf) {
+    cents = sf::st_centroid(sf)
+    sf$longitudes = sf::st_coordinates(cents)[, 1]
+    sf = sf[order(sf$longitudes), ]
+    sf$longitudes = NULL
+    return(sf)
+}
+rust_reordered = reorder_sf(lines_with_overlaps_rust_overline)
+r_reordered = reorder_sf(lines_with_overlaps_r_overline)
+plot(rust_reordered$geometry[1], col = "red", lwd = 9)
+plot(r_reordered$geometry[1], col = "blue", lwd = 9)
+waldo::compare(r_reordered$geometry[1], rust_reordered$geometry[1])
+waldo::compare(r_reordered$geometry[2], rust_reordered$geometry[2])
+waldo::compare(r_reordered$geometry[3], rust_reordered$geometry[3])
+waldo::compare(r_reordered$geometry[4], rust_reordered$geometry[4])
+waldo::compare(r_reordered$geometry[5], rust_reordered$geometry[5])
+waldo::compare(r_reordered$geometry[6], rust_reordered$geometry[6])
+
+plot(rust_reordered$geometry[6], col = "red", lwd = 9)
+plot(r_reordered$geometry[6], col = "blue", lwd = 3, add = TRUE)
+library(tmap)
+tmap_mode("view")
+
+qtm(lines_with_overlaps, lines.col = "grey", lines.lwd = 15) +
+  qtm(r_reordered[6, ], lines.col = "blue", lines.lwd = 9) +
+  qtm(rust_reordered[6, ], lines.lwd = 2)
