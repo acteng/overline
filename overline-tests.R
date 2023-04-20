@@ -61,3 +61,11 @@ sf::write_sf(lines_without_shared_vertices_overline, "test-data/lines_without_sh
 # Test total travelled: same for both datasets
 sum(sf::st_length(lines_without_shared_vertices_sf) * lines_without_shared_vertices_sf$value)
 sum(sf::st_length(lines_without_shared_vertices_overline) * lines_without_shared_vertices_overline$value)
+
+# Test with two lines that overlap in multiple places:
+list.files("rust/tests/")
+lines_with_overlaps = sf::read_sf("rust/tests/atip_input.geojson")
+lines_with_overlaps_r_overline = stplanr::overline(sl = lines_with_overlaps, attrib = "foot")
+sf::write_sf(lines_with_overlaps_r_overline, "test-data/lines_with_overlaps_r_overline.geojson", delete_dsn = TRUE)
+lines_with_overlaps_rust_overline = sf::read_sf("rust/tests/atip_output.geojson")
+waldo::compare(line)
