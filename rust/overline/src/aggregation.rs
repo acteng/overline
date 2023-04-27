@@ -32,17 +32,7 @@ pub fn aggregate_properties(
         .par_iter()
         .map(|grouped| {
             // Copy the geometry
-            let mut feature = Feature {
-                geometry: Some(geojson::Geometry {
-                    value: geojson::Value::from(&grouped.geometry),
-                    bbox: None,
-                    foreign_members: None,
-                }),
-                properties: None,
-                bbox: None,
-                id: None,
-                foreign_members: None,
-            };
+            let mut feature = Feature::from(geojson::Value::from(&grouped.geometry));
             // Aggregate each specified property
             for (key, aggregation) in &properties {
                 // Ignore features without this property
