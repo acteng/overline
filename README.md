@@ -49,114 +49,17 @@ output.plot(column="value")
 
 ![](README_files/figure-commonmark/unnamed-chunk-4-3.png)
 
-![](README_files/figure-commonmark/unnamed-chunk-3-3.png)
-
 # Example with road names
 
 The example below takes routes at the segment level and calculates
 average gradient for each segment. Road names are NOT currently
 implemented in `overline()` in R.
 
-``` r
-sl_desire_lines = stplanr::flowlines_sf[2:3, ]
-# qtm(sl_desire_lines) +
-#   qtm(sl)
-route_segments_minimal = stplanr::route(
-  l = sl_desire_lines,
-  route_fun = cyclestreets::journey
-  )
-```
-
-    Most common output is sf
-
-``` r
-names(route_segments_minimal)
-```
-
-     [1] "Area.of.residence"                   
-     [2] "Area.of.workplace"                   
-     [3] "All"                                 
-     [4] "Work.mainly.at.or.from.home"         
-     [5] "Underground..metro..light.rail..tram"
-     [6] "Train"                               
-     [7] "Bus..minibus.or.coach"               
-     [8] "Taxi"                                
-     [9] "Motorcycle..scooter.or.moped"        
-    [10] "Driving.a.car.or.van"                
-    [11] "Passenger.in.a.car.or.van"           
-    [12] "Bicycle"                             
-    [13] "On.foot"                             
-    [14] "Other.method.of.travel.to.work"      
-    [15] "id"                                  
-    [16] "route_number"                        
-    [17] "name"                                
-    [18] "distances"                           
-    [19] "time"                                
-    [20] "busynance"                           
-    [21] "quietness"                           
-    [22] "gradient_segment"                    
-    [23] "elevation_change"                    
-    [24] "provisionName"                       
-    [25] "start_longitude"                     
-    [26] "start_latitude"                      
-    [27] "finish_longitude"                    
-    [28] "finish_latitude"                     
-    [29] "crow_fly_distance"                   
-    [30] "event"                               
-    [31] "whence"                              
-    [32] "speed"                               
-    [33] "itinerary"                           
-    [34] "plan"                                
-    [35] "note"                                
-    [36] "length"                              
-    [37] "west"                                
-    [38] "south"                               
-    [39] "east"                                
-    [40] "north"                               
-    [41] "leaving"                             
-    [42] "arriving"                            
-    [43] "grammesCO2saved"                     
-    [44] "calories"                            
-    [45] "edition"                             
-    [46] "gradient_smooth"                     
-    [47] "geometry"                            
-
-``` r
-tm_shape(route_segments_minimal) +
-  tm_lines("name")
-```
-
-![](README_files/figure-commonmark/unnamed-chunk-5-5.png)
-
-``` r
-rnet_from_cyclestreets = overline(
-  route_segments_minimal,
-  attrib = c("All", "gradient_smooth", "quietness"),
-  fun = c(sum = sum, mean = mean)
-  )
-rnet_from_cyclestreets = rnet_from_cyclestreets %>% 
-  transmute(All = All_sum, Gradient = gradient_smooth_mean, Quietness = quietness_mean)
-plot(rnet_from_cyclestreets)
-```
-
-![](README_files/figure-commonmark/unnamed-chunk-5-6.png)
-
-``` r
-sf::write_sf(route_segments_minimal, "route_segments_minimal.geojson", delete_dsn = TRUE)
-sf::write_sf(rnet_from_cyclestreets, "rnet_from_cyclestreets.geojson", delete_dsn = TRUE)
-```
+![](README_files/figure-commonmark/rnet_from_cyclestreets-5.png)
 
 # Large example
 
 A large example plus benchmark is shown below:
-
-``` r
-# list.files()
-cycle_routes_london = pct::get_pct_routes_fast("london")
-sf::write_sf(cycle_routes_london, "cycle_routes_london.geojson")
-zip("cycle_routes_london.zip", "cycle_routes_london.geojson")
-system("gh release upload v0 cycle_routes_london.zip")
-```
 
 ``` r
 system.time({
