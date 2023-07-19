@@ -5,54 +5,63 @@ bibliography: references.bib
 
 # overline
 
-Overline is a function that takes overlapping linestrings and converts them into a route network [@morgan2020] as illustrated in a minimal reproducible example below.
+Overline is a function that takes overlapping linestrings and converts them into a route network [@morgan2020] as illustrated in a minimal reproducible example created with [ATIP](https://github.com/acteng/atip/).
 
-```{r, message=FALSE}
-library(sf)
-library(stplanr)
+The input is a dataset in which some segments overlap:
+
+```{r, message=FALSE, echo=FALSE}
 library(tidyverse)
 library(tmap)
-sl = routes_fast_sf[2:3, 0]
-sl$n = 1:2
-plot(sl)
-rnet = overline(sl, attrib = "n")
-plot(rnet)
-sf::write_sf(sl, "minimal-example-input.geojson", delete_dsn = TRUE)
-sf::write_sf(rnet, "minimal-example-output.geojson", delete_dsn = TRUE)
+library(stplanr)
+layers = sf::st_layers("test-data/minimal_2_lines.txt")
+minimal_2_lines = sf::st_read("test-data/minimal_2_lines.txt", layer = layers[[1]])
+minimal_2_lines = minimal_2_lines %>% 
+  transmute(value = c(2, 1), name = c("A", "B"))
+sf::write_sf(minimal_2_lines, "input.geojson", delete_dsn = TRUE)
+tm_shape(minimal_2_lines) +
+  tm_lines("name", palette = "Set1", lwd = "value", scale = 9)
 ```
 
-The function has been implemented in the [`overline()` function](https://docs.ropensci.org/stplanr/reference/overline.html) in the R package `stplanr`. The function works fine for city sized datasets but for national datasets is slow, buggy and not feature complete, as it does not retain OSM IDs. This repo provides a place to discuss and develop example code to solve this problem.
+The output is a dataset in which the overlapping segments have been combined:
+
+```{r, message=FALSE, echo=FALSE}
+minimal_2_rnet = overline(minimal_2_lines, attrib = "value")
+tm_shape(minimal_2_rnet) +
+  tm_lines("value", palette = "Set1", lwd = "value", scale = 15)
+sf::write_sf(minimal_2_rnet, "output.geojson", delete_dsn = TRUE)
+```
+
+The functionality has been implemented in the [`overline()` function](https://docs.ropensci.org/stplanr/reference/overline.html) in the R package `stplanr`. The function works fine for city sized datasets but for national datasets is slow, buggy and not feature complete, as it does not retain OSM IDs. This repo provides a place to discuss and develop example code to solve this problem.
 
 In Python, the input and outputs can be visualised as follows:
 
-```python
+```{python}
 import geopandas as gpd
 input = gpd.read_file("input.geojson")
-input.plot()
+# Plot with colour by value:
+input.plot(column="value")
 ```
 
-```python
+```{python}
 output = gpd.read_file("output.geojson")
-output.plot()
+output.plot(column="value")
 ```
-![](README_files/figure-commonmark/unnamed-chunk-3-3.png)
-
 
 # Example with road names
 
 The example below takes routes at the segment level and calculates average gradient for each segment. Road names are NOT currently implemented in `overline()` in R.
 
-```{r}
+```{r rnet_from_cyclestreets, message=FALSE, echo=FALSE}
 sl_desire_lines = stplanr::flowlines_sf[2:3, ]
-qtm(sl_desire_lines) +
-  qtm(sl)
+# qtm(sl_desire_lines) +
+#   qtm(sl)
 route_segments_minimal = stplanr::route(
   l = sl_desire_lines,
   route_fun = cyclestreets::journey
   )
-names(route_segments_minimal)
-tm_shape(route_segments_minimal) +
-  tm_lines("name")
+# names(route_segments_minimal)
+route_segments_minimal = route_segments_minimal %>% 
+  transmute(All = All, name = name, gradient_smooth = gradient_smooth, quietness = quietness)
 rnet_from_cyclestreets = overline(
   route_segments_minimal,
   attrib = c("All", "gradient_smooth", "quietness"),
@@ -60,9 +69,15 @@ rnet_from_cyclestreets = overline(
   )
 rnet_from_cyclestreets = rnet_from_cyclestreets %>% 
   transmute(All = All_sum, Gradient = gradient_smooth_mean, Quietness = quietness_mean)
-plot(rnet_from_cyclestreets)
 sf::write_sf(route_segments_minimal, "route_segments_minimal.geojson", delete_dsn = TRUE)
 sf::write_sf(rnet_from_cyclestreets, "rnet_from_cyclestreets.geojson", delete_dsn = TRUE)
+m1 = tm_shape(route_segments_minimal) +
+  tm_lines("name", lwd = "All", palette = "Set1", scale = 15) +
+  tm_layout(legend.outside = TRUE)
+m2 = tm_shape(rnet_from_cyclestreets) +
+  tm_lines(lwd = "All", palette = "viridis", scale = 20) +
+  tm_layout(legend.outside = TRUE)
+tmap_arrange(m1, m2)
 ```
 
 # Large example
@@ -71,6 +86,7 @@ A large example plus benchmark is shown below:
 
 ```{r}
 #| eval: false
+#| echo: false
 # list.files()
 cycle_routes_london = pct::get_pct_routes_fast("london")
 sf::write_sf(cycle_routes_london, "cycle_routes_london.geojson")
