@@ -3,33 +3,28 @@
 
 Overline is a function that takes overlapping linestrings and converts
 them into a route network (Morgan and Lovelace 2020) as illustrated in a
-minimal reproducible example below.
+minimal reproducible example created with
+[ATIP](https://github.com/acteng/atip/).
 
-``` r
-library(sf)
-library(stplanr)
-library(tidyverse)
-library(tmap)
-sl = routes_fast_sf[2:3, 0]
-sl$n = 1:2
-plot(sl)
-```
+The input is a dataset in which some segments overlap:
+
+    Reading layer `minimal_2_lines' from data source 
+      `/home/robin/github/acteng/overline/test-data/minimal_2_lines.txt' 
+      using driver `GeoJSON'
+    Simple feature collection with 2 features and 5 fields
+    Geometry type: LINESTRING
+    Dimension:     XY
+    Bounding box:  xmin: -1.29569 ymin: 50.69972 xmax: -1.295337 ymax: 50.69987
+    Geodetic CRS:  WGS 84
 
 ![](README_files/figure-commonmark/unnamed-chunk-1-1.png)
 
-``` r
-rnet = overline(sl, attrib = "n")
-plot(rnet)
-```
+The output is a dataset in which the overlapping segments have been
+combined:
 
-![](README_files/figure-commonmark/unnamed-chunk-1-2.png)
+![](README_files/figure-commonmark/unnamed-chunk-2-1.png)
 
-``` r
-sf::write_sf(sl, "minimal-example-input.geojson", delete_dsn = TRUE)
-sf::write_sf(rnet, "minimal-example-output.geojson", delete_dsn = TRUE)
-```
-
-The function has been implemented in the [`overline()`
+The functionality has been implemented in the [`overline()`
 function](https://docs.ropensci.org/stplanr/reference/overline.html) in
 the R package `stplanr`. The function works fine for city sized datasets
 but for national datasets is slow, buggy and not feature complete, as it
@@ -41,13 +36,18 @@ In Python, the input and outputs can be visualised as follows:
 ``` python
 import geopandas as gpd
 input = gpd.read_file("input.geojson")
-input.plot()
+# Plot with colour by value:
+input.plot(column="value")
 ```
+
+![](README_files/figure-commonmark/unnamed-chunk-3-1.png)
 
 ``` python
 output = gpd.read_file("output.geojson")
-output.plot()
+output.plot(column="value")
 ```
+
+![](README_files/figure-commonmark/unnamed-chunk-4-3.png)
 
 ![](README_files/figure-commonmark/unnamed-chunk-3-3.png)
 
@@ -59,13 +59,8 @@ implemented in `overline()` in R.
 
 ``` r
 sl_desire_lines = stplanr::flowlines_sf[2:3, ]
-qtm(sl_desire_lines) +
-  qtm(sl)
-```
-
-![](README_files/figure-commonmark/unnamed-chunk-2-1.png)
-
-``` r
+# qtm(sl_desire_lines) +
+#   qtm(sl)
 route_segments_minimal = stplanr::route(
   l = sl_desire_lines,
   route_fun = cyclestreets::journey
@@ -98,41 +93,40 @@ names(route_segments_minimal)
     [18] "distances"                           
     [19] "time"                                
     [20] "busynance"                           
-    [21] "elevations"                          
-    [22] "start_longitude"                     
-    [23] "start_latitude"                      
-    [24] "finish_longitude"                    
-    [25] "finish_latitude"                     
-    [26] "crow_fly_distance"                   
-    [27] "event"                               
-    [28] "whence"                              
-    [29] "speed"                               
-    [30] "itinerary"                           
-    [31] "plan"                                
-    [32] "note"                                
-    [33] "length"                              
-    [34] "quietness"                           
-    [35] "west"                                
-    [36] "south"                               
-    [37] "east"                                
-    [38] "north"                               
-    [39] "leaving"                             
-    [40] "arriving"                            
-    [41] "grammesCO2saved"                     
-    [42] "calories"                            
-    [43] "edition"                             
-    [44] "gradient_segment"                    
-    [45] "elevation_change"                    
-    [46] "provisionName"                       
-    [47] "gradient_smooth"                     
-    [48] "geometry"                            
+    [21] "quietness"                           
+    [22] "gradient_segment"                    
+    [23] "elevation_change"                    
+    [24] "provisionName"                       
+    [25] "start_longitude"                     
+    [26] "start_latitude"                      
+    [27] "finish_longitude"                    
+    [28] "finish_latitude"                     
+    [29] "crow_fly_distance"                   
+    [30] "event"                               
+    [31] "whence"                              
+    [32] "speed"                               
+    [33] "itinerary"                           
+    [34] "plan"                                
+    [35] "note"                                
+    [36] "length"                              
+    [37] "west"                                
+    [38] "south"                               
+    [39] "east"                                
+    [40] "north"                               
+    [41] "leaving"                             
+    [42] "arriving"                            
+    [43] "grammesCO2saved"                     
+    [44] "calories"                            
+    [45] "edition"                             
+    [46] "gradient_smooth"                     
+    [47] "geometry"                            
 
 ``` r
 tm_shape(route_segments_minimal) +
   tm_lines("name")
 ```
 
-![](README_files/figure-commonmark/unnamed-chunk-2-2.png)
+![](README_files/figure-commonmark/unnamed-chunk-5-5.png)
 
 ``` r
 rnet_from_cyclestreets = overline(
@@ -145,7 +139,7 @@ rnet_from_cyclestreets = rnet_from_cyclestreets %>%
 plot(rnet_from_cyclestreets)
 ```
 
-![](README_files/figure-commonmark/unnamed-chunk-2-3.png)
+![](README_files/figure-commonmark/unnamed-chunk-5-6.png)
 
 ``` r
 sf::write_sf(route_segments_minimal, "route_segments_minimal.geojson", delete_dsn = TRUE)

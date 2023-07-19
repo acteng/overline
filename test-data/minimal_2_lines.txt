@@ -1,0 +1,94 @@
+ {
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            -1.295689799995665,
+            50.699871900289615
+          ],
+          [
+            -1.2956699996137422,
+            50.69984930033761
+          ],
+          [
+            -1.2955895009075469,
+            50.699799700052964
+          ],
+          [
+            -1.2953374999088936,
+            50.6998715999162
+          ]
+        ],
+        "type": "LineString"
+      },
+      "properties": {
+        "length_meters": 30.3046,
+        "waypoints": [
+          {
+            "lat": 50.699871900289615,
+            "lon": -1.295689799995665,
+            "snapped": true
+          },
+          {
+            "lat": 50.6998715999162,
+            "lon": -1.2953374999088936,
+            "snapped": true
+          }
+        ],
+        "intervention_type": "route",
+        "name": "r1",
+        "description": "1"
+      },
+      "type": "Feature",
+      "id": 1
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            -1.2955370997108446,
+            50.69972249958818
+          ],
+          [
+            -1.2955895009075469,
+            50.699799700052964
+          ],
+          [
+            -1.2953374999088936,
+            50.6998715999162
+          ]
+        ],
+        "type": "LineString"
+      },
+      "properties": {
+        "length_meters": 28.8564,
+        "waypoints": [
+          {
+            "lat": 50.69972249958818,
+            "lon": -1.2955370997108446,
+            "snapped": true
+          },
+          {
+            "lat": 50.699799700052964,
+            "lon": -1.2955895009075469,
+            "snapped": true
+          },
+          {
+            "lat": 50.6998715999162,
+            "lon": -1.2953374999088936,
+            "snapped": true
+          }
+        ],
+        "intervention_type": "route",
+        "name": "r2",
+        "description": "2"
+      },
+      "type": "Feature",
+      "id": 2
+    }
+  ],
+  "authority": "Isle of Wight",
+  "origin": "atip-v2"
+}
